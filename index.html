@@ -60,7 +60,7 @@ html,body{height:100%;background:var(--ui-bg);color:var(--ui-text);font-family:'
 
 /* ── CATEGORY TABS (hidden now — flat list of 10) ─── */
 .cat-tabs{display:none;}
-.template-thumb.hidden{display:none;}
+.template-thumb.hidden,.mobile-tmpl-thumb.hidden{display:none;}
 
 /* ── CAPTION GENERATOR ───────────────────────── */
 .caption-panel{background:var(--ui-panel);border-top:1px solid var(--ui-border);padding:14px 16px;flex-shrink:0;display:none;}
@@ -356,7 +356,7 @@ textarea{resize:vertical;min-height:52px;line-height:1.5;}
   <div class="drawer-handle"></div>
   <div class="drawer-header">
     <div class="drawer-title">Edit Post Details</div>
-    <button class="drawer-close" id="drawer-close">&#x2715;</button>
+    <button class="drawer-close" id="drawer-close" aria-label="Close edit drawer">&#x2715;</button>
   </div>
   <div class="drawer-body" id="form-mobile"></div>
 </div>
@@ -459,7 +459,7 @@ function cssPhoto(){
   // Default: CSS `cover` auto-fits any photo into any template's container shape.
   // If the user has manually scroll-zoomed, honor their % value instead.
   const size=state.userHasZoomed?`${state.photoZoom}%`:'cover';
-  return `background-image:url('${ph}');background-size:${size};background-position:${px}% ${py}%;background-repeat:no-repeat;`;
+  return `background-image:url('${ph}');background-size:${size};background-position:${px}% ${py}%;background-repeat:no-repeat;filter:var(--photo-filter,none);`;
 }
 function agentLine(){
   const n=[state.agentFirst,state.agentLast].filter(Boolean).join(' ');
@@ -688,7 +688,7 @@ const TEMPLATES=[
   const sp=isP?50:45;
   const bfs=Math.round(fs*.032),pfs=Math.round(fs*.08),afs=Math.round(fs*.03);
   const pad=Math.round(ps*.05);
-  const oh=state.ohDate?`Open House: ${state.ohDate}${state.ohStart?' '+fmtTime(state.ohStart):''}${state.ohEnd?' - '+fmtTime(state.ohEnd):''}`:''
+  const oh=state.postType==='open-house'?buildOH():'';
   return`<div style="width:100%;height:100%;display:flex;flex-direction:${isP?'column':'row'};overflow:hidden;">
     <div style="${isP?`width:100%;height:${sp}%;`:`width:${sp}%;height:100%;`}${ph?cssPhoto():'background:#e8e8e8;'}position:relative;flex-shrink:0;">
       <div style="position:absolute;top:${Math.round(pad*.6)}px;right:${Math.round(pad*.6)}px;background:#012169;padding:${Math.round(fs*.005)}px ${Math.round(fs*.013)}px;">
@@ -715,7 +715,7 @@ const TEMPLATES=[
   const ph=getPhoto(),fs=fsc(s),ps=Math.min(s.w,s.h);
   const bfs=Math.round(fs*.028),pfs=Math.round(fs*.12),afs=Math.round(fs*.032);
   const pad=Math.round(ps*.05);
-  const oh=state.ohDate?`Open House: ${state.ohDate}${state.ohStart?' '+fmtTime(state.ohStart):''}${state.ohEnd?' - '+fmtTime(state.ohEnd):''}`:''
+  const oh=state.postType==='open-house'?buildOH():'';
   return`<div style="width:100%;height:100%;background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:${pad}px;box-sizing:border-box;">
     ${ph?`<div style="position:absolute;inset:0;${cssPhoto()}opacity:.05;"></div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -742,7 +742,7 @@ const TEMPLATES=[
   const photoH=isL?s.h:Math.round(s.h*.6);
   const bfs=Math.round(fs*.032),pfs=Math.round(fs*.082),afs=Math.round(fs*.03);
   const pad=Math.round(ps*.04);
-  const oh=state.ohDate?`Open House: ${state.ohDate}${state.ohStart?' '+fmtTime(state.ohStart):''}${state.ohEnd?' - '+fmtTime(state.ohEnd):''}`:''
+  const oh=state.postType==='open-house'?buildOH():'';
   return`<div style="width:100%;height:100%;background:#fff;position:relative;overflow:hidden;">
     ${ph?`<div style="position:absolute;top:0;left:0;right:0;height:${photoH}px;${cssPhoto()}"></div>`:''}
     <div style="position:absolute;${isL?`top:0;left:0;right:0;bottom:0;background:linear-gradient(to right,rgba(255,255,255,.0) 30%,rgba(255,255,255,.95) 65%,#fff 100%);`:`top:${Math.round(photoH*.35)}px;left:0;right:0;bottom:0;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 45%);`}"></div>
@@ -767,7 +767,7 @@ const TEMPLATES=[
   const split=isL?50:52;
   const bfs=Math.round(fs*.036),pfs=Math.round(fs*.082),afs=Math.round(fs*.031);
   const pad=Math.round(ps*.05);
-  const oh=state.ohDate?`Open House: ${state.ohDate}${state.ohStart?' '+fmtTime(state.ohStart):''}${state.ohEnd?' - '+fmtTime(state.ohEnd):''}`:''
+  const oh=state.postType==='open-house'?buildOH():'';
   return`<div style="width:100%;height:100%;display:flex;flex-direction:${isL?'row':'column'};overflow:hidden;">
     <div style="${isL?`width:${split}%;height:100%;`:`width:100%;height:${split}%;`}background:#012169;display:flex;flex-direction:column;justify-content:space-between;padding:${pad}px;box-sizing:border-box;">
       <img src="${LOGO_WHITE}" style="height:${Math.round(ps*.04)}px;width:auto;" alt="CB Select">
@@ -1006,6 +1006,7 @@ function buildPhotoThumb(url,idx){
   const del=document.createElement('button');
   del.className='photo-thumb-del';
   del.textContent='×';
+  del.setAttribute('aria-label','Remove photo');
   del.addEventListener('click',ev=>{
     ev.stopPropagation();
     state.photos.splice(idx,1);
@@ -1243,7 +1244,7 @@ function generateCaption(){
   } else if(pt==='just-sold'){
     body=`Sold! Congratulations to my amazing clients on their new home at ${state.address||'this beautiful property'}${state.city?', '+state.city:''}!\n\nClosed at ${state.price||'list price'}\n\n${state.tagline||'Thrilled to make this happen!'}\n\nThinking of buying or selling? Let\'s talk.${phone}`;
   } else if(pt==='open-house'){
-    body=`Open House Alert! Come tour this stunning home at ${state.address||'our featured property'}${state.city?', '+state.city:''}.\n\nListed at ${state.price||''}${state.beds?'\n'+state.beds+' BD':''} ${state.baths?'| '+state.baths+' BA':''} ${state.sqft?'| '+state.sqft+' Sq Ft':''}\n\n${state.ohDate?'Date: '+state.ohDate:''} ${state.ohStart?fmtTime(state.ohStart)+' - '+fmtTime(state.ohEnd):''}\n\nSee you there!`;
+    body=`Open House Alert! Come tour this stunning home at ${state.address||'our featured property'}${state.city?', '+state.city:''}.\n\nListed at ${state.price||''}${state.beds?'\n'+state.beds+' BD':''} ${state.baths?'| '+state.baths+' BA':''} ${state.sqft?'| '+state.sqft+' Sq Ft':''}\n\n${state.ohDate?'Date: '+fmtDate(state.ohDate):''} ${state.ohStart?fmtTime(state.ohStart)+' - '+fmtTime(state.ohEnd):''}\n\nSee you there!`;
   } else if(pt==='price-reduced'){
     body=`Price Reduced! Now at ${state.price||'a new low price'}.\n\n${state.address||'This incredible property'}${state.city?', '+state.city:''}\n${state.beds?' '+state.beds+' BD':''} ${state.baths?'| '+state.baths+' BA':''} ${state.sqft?'| '+state.sqft+' Sq Ft':''}\n\n${state.tagline||''}\n\nDon\'t miss this opportunity.${phone}`;
   } else {
@@ -1276,9 +1277,10 @@ function refreshCaption(btn){
 let photoBrightness=100, photoContrast=100, overlayOpacity=100;
 
 function applyPhotoFilter(){
-  document.querySelectorAll('#post-canvas [data-photo-filter]').forEach(el=>{
-    el.style.filter=`brightness(${photoBrightness}%) contrast(${photoContrast}%)`;
-  });
+  // Photo layers inherit `filter:var(--photo-filter,none)` via cssPhoto().
+  // Setting the variable on #post-canvas propagates to every photo div.
+  const c=document.getElementById('post-canvas');
+  if(c) c.style.setProperty('--photo-filter',`brightness(${photoBrightness}%) contrast(${photoContrast}%)`);
 }
 
 function updateBrightness(v){
@@ -1450,7 +1452,7 @@ function renderMlsList(){
   filtered.slice(0,limit).forEach(l=>{
     const item=document.createElement('div');
     item.className='mls-item';
-    const priceNum=parseInt(l.price,10);
+    const priceNum=parseInt(String(l.price||'').replace(/[^\d]/g,''),10);
     const priceStr=priceNum?'$'+priceNum.toLocaleString():'';
     const thumb=l.photos[0]?proxyImg(l.photos[0])+'&w=120&h=120&fit=cover':'';
     const statusClass=(l.status||'').toLowerCase();
@@ -1494,7 +1496,7 @@ function selectMlsListing(l){
   if(l.city&&l.state){
     state.city=`${l.city}, ${l.state}${l.zip?' '+l.zip:''}`;
   }
-  const priceNum=parseInt(l.price,10);
+  const priceNum=parseInt(String(l.price||'').replace(/[^\d]/g,''),10);
   state.price=priceNum?'$'+priceNum.toLocaleString():'';
   // Beds/baths/sqft are NOT in this feed — leave existing values alone
   ['address','city','price'].forEach(k=>{
@@ -1671,7 +1673,8 @@ function showRosterDropdown(input){
     const item=document.createElement('div');
     item.className='roster-item';
     const line2=[a.phone,a.email].filter(Boolean).join(' · ');
-    item.innerHTML=`<div style="font-weight:600;">${a.first} ${a.last}</div>${line2?`<div style="font-size:9px;opacity:.7;margin-top:2px;">${line2}</div>`:''}`;
+    const nameHtml=`${escapeHtml(a.first||'')} ${escapeHtml(a.last||'')}`;
+    item.innerHTML=`<div style="font-weight:600;">${nameHtml}</div>${line2?`<div style="font-size:9px;opacity:.7;margin-top:2px;">${escapeHtml(line2)}</div>`:''}`;
     item.addEventListener('mousedown',ev=>{
       ev.preventDefault(); // keep input focus so blur doesn't race
       state.agentFirst=a.first||''; state.agentLast=a.last||'';
@@ -1790,7 +1793,7 @@ const EXTRA_FORM = `
 /* ═══ INIT ═════════════════════════════════════════════════════ */
 loadAgentFromStorage();
 buildThumbs();
-buildCatTabs();
+// buildCatTabs() is called AFTER cat-tabs containers are inserted below.
 buildSizePills();
 bindFormEvents();
 // Persist agent fields on change (now includes website)
@@ -1883,7 +1886,7 @@ renderCanvas();
         <div style="font-family:Geometos,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#B8CFEA;margin-bottom:3px;">Add to Home Screen</div>
         <div style="font-size:12px;font-weight:300;color:rgba(255,255,255,.75);line-height:1.4;">Tap Share &#8594; Add to Home Screen for the full app experience</div>
       </div>
-      <button onclick="document.getElementById('install-banner').remove();localStorage.setItem('install-dismissed','1');" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;">&times;</button>
+      <button aria-label="Dismiss install banner" onclick="document.getElementById('install-banner').remove();localStorage.setItem('install-dismissed','1');" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;">&times;</button>
     `;
     // On Android, use the native prompt
     const installBtn=document.createElement('button');
